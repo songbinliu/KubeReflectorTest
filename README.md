@@ -63,24 +63,33 @@ func main() {
 From this example, we can see that Reflector uses Kube-client to list and watch all the Pods, and store the changes in the *Store*.
 ![reflector](https://cloud.githubusercontent.com/assets/27221807/26739964/d1db6246-47a1-11e7-8639-49699e75132e.png)
 
-### Implementation of Reflector ###
-The implementation of Reflector is in [Kubernetes Go Client](https://github.com/kubernetes/client-go/blob/master/tools/cache/reflector.go) tools/cache/ package. **Reflector.RunUntil()** function will periodly call **Reflector.ListAndWatch()** function. 
 
-As the name suggests, **Reflector.ListAndWatch()** will first list all the Objects and store them in the *Store*; then it will *watch* the changes and handle the changes with **Reflector.watchHandler()** function.Following is the skech of the **Reflector.ListAndWatch()** and **Reflector.watchHandler()** functions.
+### Change For Visibility ###
+For easier understanding of the Reflector, it is better to add some logs to the **Reflector.watchHandler()** function.
+```go
+func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
+	start := r.clock.Now()
+	eventCount := 0
+	glog.V(1).Infof("%s: begin watchHandler() *************", r.name)
+	// Stopping the watcher should be idempotent and if we return from this function there's no way
+	// we're coming back in with the same watch interface.
+	defer w.Stop()
 
-**Reflctor.ListAndWatch()**
-![listwatch](https://cloud.githubusercontent.com/assets/27221807/26740901/65b646f4-47a5-11e7-9e2b-24e78d3bb65e.png)
+loop:
+	for {
+		select {
+		case <-stopCh:
+			return errorStopRequested
+		case err := <-errc:
+			return err
+		case event, ok := <-w.ResultChan():
+			if !ok {
+				break loop
+			}
+			glog.V(1).Infof("%s: got event: %v", r.name, event.Type)
+			if event.Type == watch.Error {
+				return apierrs.FromObject(event.Object)
+			}
+```
 
-As shown in the definition of *Reflctor.ListAndWatch()*, Reflector first call *kubeclient.List()* to get all the Objects (in the previous example, they are Pods), and add all these Objects into the *Store* by **Reflector.syncWith()**. 
-Second, the Reflector will call *kubeclient.Watch()*. As this *Watch()* call has timeout, it will call *kubeclient.Watch()* repeatedly.
-
-
-**Reflector.watchHandler()** 
-![handlewatch](https://cloud.githubusercontent.com/assets/27221807/26740995/c2eefa00-47a5-11e7-8203-4d8e6efdb21d.png)
-
-As shown in the definition of *Reflector.watchHandler()*, Reflector keeps a connection to the *APIserver*, and receives changes(*Events*) from this connection. It will update the content of the *Store* according to the *Event.Type*. The content  of the *Store* will be consumed by other components.
-
-
-### Usage of Reflector ###
-**Reflector** provides an efficient framework to monitor the changes of the Kubernetes cluster. Many other tools are build base on **Reflector**, by consuming the content of the *Reflector.Store*. For example, *ReplicationController* will watch the number of living Pods, and create or kill Pod as necessary.
-
+The line ```glog.V(1).Infof("%s: got event: %v", r.name, event.Type)``` is added.
