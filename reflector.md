@@ -75,9 +75,21 @@ Second, the Reflector will call *kubeclient.Watch()*. As this *Watch()* call has
 **Reflector.watchHandler()** 
 ![handlewatch](https://cloud.githubusercontent.com/assets/27221807/26740995/c2eefa00-47a5-11e7-8203-4d8e6efdb21d.png)
 
-As shown in the definition of *Reflector.watchHandler()*, Reflector keeps a connection to the *APIserver*, and receives changes(*Events*) from this connection. It will update the content of the *Store* according to the *Event.Type*. The content  of the *Store* will be consumed by other components.
+As shown in the definition of *Reflector.watchHandler()*, Reflector keeps a connection to the *APIserver*, and receives changes(*Events*) from this connection. It will update the content of the *Store* according to the *Event.Type*. The content  of the *Store* will be consumed by other components. 
+
+It should be noted the *Event.Type* is not add to *Store* directly. [**Delta_FIFO**](https://github.com/kubernetes/client-go/blob/master/tools/cache/delta_fifo.go) adds the *Event.Type* back according to function type, for example:
+```go
+// Update is just like Add, but makes an Updated Delta.
+func (f *DeltaFIFO) Update(obj interface{}) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.populated = true
+	return f.queueActionLocked(Updated, obj)
+}
+
+```
 
 
 ### Usage of Reflector ###
-**Reflector** provides an efficient framework to monitor the changes of the Kubernetes cluster. Many other tools are build base on **Reflector**, by consuming the content of the *Reflector.Store*. For example, *ReplicationController* will watch the number of living Pods, and create or kill Pod as necessary.
+**Reflector** provides an efficient framework to monitor the changes of the Kubernetes cluster. Many other tools are build base on **Reflector**, by consuming the content of the *Reflector.Store*. For example,[**Controller**](https://github.com/kubernetes/client-go/blob/master/tools/cache/controller.go) has a **ProcessFunc** to consume the content of the store.
 
