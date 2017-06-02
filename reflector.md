@@ -77,13 +77,14 @@ Second, the Reflector will call *kubeclient.Watch()*. As this *Watch()* call has
 
 As shown in the definition of *Reflector.watchHandler()*, Reflector keeps a connection to the *APIserver*, and receives changes(*Events*) from this connection. It will update the content of the *Store* according to the *Event.Type*. The content  of the *Store* will be consumed by other components. 
 
-It should be noted the *Event.Type* is not add to *Store* directly. [**Delta_FIFO**](https://github.com/kubernetes/client-go/blob/master/tools/cache/delta_fifo.go) adds the *Event.Type* back according to function type, for example:
+It should be noted the *Event.Type* is not add to *Store* directly. It can be added by implementing a particular *Store*. For example, [**Delta_FIFO**](https://github.com/kubernetes/client-go/blob/master/tools/cache/delta_fifo.go) adds the *Event.Type* back according to function type, for example:
 ```go
 // Update is just like Add, but makes an Updated Delta.
 func (f *DeltaFIFO) Update(obj interface{}) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	f.populated = true
+	//Update is the Event.Type
 	return f.queueActionLocked(Updated, obj)
 }
 
