@@ -77,7 +77,7 @@ Second, the Reflector will call *kubeclient.Watch()*. As this *Watch()* call has
 
 As shown in the definition of *Reflector.watchHandler()*, Reflector keeps a connection to the *APIserver*, and receives changes(*Events*) from this connection. It will update the content of the *Store* according to the *Event.Type*. The content  of the *Store* will be consumed by other components. 
 
-It should be noted the *Event.Type* is not add to *Store* directly. However, the *Event.Type* sometimes can be necessary. For example, the RepicaSet Controller has to know the Event.Type of whether a Pod is Added or Deleted, so it can decided whether to create or kill other Pods. Fortunately, the *Event.Type* can be added by implementing a particular *Store*. For example, [**Delta_FIFO**](https://github.com/kubernetes/client-go/blob/master/tools/cache/delta_fifo.go) adds a hint of the *Event.Type* according to function type:
+It should be noted the *Event.Type* is not add to *Store* directly. However, the *Event.Type* sometimes can be necessary. For example, the ReplicaSet Controller has to know the Event.Type of whether a Pod is Added or Deleted, so it can decided whether to create or kill other Pods. Fortunately, the *Event.Type* can be added by implementing a particular *Store*. For example, [**Delta_FIFO**](https://github.com/kubernetes/client-go/blob/master/tools/cache/delta_fifo.go) adds a hint of the *Event.Type* according to function type:
 ```go
 // Add inserts an item, and puts it in the queue. The item is only enqueued
 // if it doesn't already exist in the set.
